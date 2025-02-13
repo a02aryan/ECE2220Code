@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/aryanpatel/Documents/Spring 2025/ECE2220_Code/prog2'
+relocations:     []
+...
