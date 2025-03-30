@@ -1,211 +1,246 @@
+/*
+Name: Aryan Patel
+CUID: ASP6
+Course: ECE2220
+Semester: Spring 2025
+Assignment number: Project 5
+Purpose: This program implements the Zen Word Game
+Assumptions: None
+Known Bugs: None
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
 
-#define MAX_WORD_LENGTH 100
-#define MAX_GROUP 5
+#define DICT_BLOCK_SIZE 5000 // Number of words to read at a time
+#define INIT_SIZE 100 // Initial size of the dictionary
+#define MAX_WORD_LENGTH 100// Maximum length of a word / helps with buffer overflow
+#define MIN_WORD_LENGTH 3/// Minimum length of a word
+#define MAX_GROUP 5// Maximum number of groups
 
-void letterPicker(char *letters) {
-    // Set seed for random number generation
-    srand(time(NULL));
-    
-    // Define vowels array
-    char vowels[] = "AEIOU";
-    int vowelCount = sizeof(vowels) - 1; // -1 for the null terminator
-    
-    // Define common consonants (omitting Z, J, Q, X, V)
-    char consonants[] = "BCDFGHKLMNPRST";
-    int consonantCount = sizeof(consonants) - 1; // -1 for the null terminator
-    
-    // Pick 2 unique vowels
-    int letterIndex = 0;
-    int usedVowelIndices[2] = {-1, -1};
-    
-    // First vowel
-    int vowelIndex = rand() % vowelCount;
-    letters[letterIndex] = vowels[vowelIndex];
-    usedVowelIndices[0] = vowelIndex;
-    letterIndex++;
-    
-    // Second vowel - ensure it's different from the first
-    int secondVowelFound = 0;
-    while (secondVowelFound == 0) {
-        vowelIndex = rand() % vowelCount;
-        if (vowelIndex != usedVowelIndices[0]) {
-            letters[letterIndex] = vowels[vowelIndex];
-            usedVowelIndices[1] = vowelIndex;
-            letterIndex++;
-            secondVowelFound = 1;
-        }
+
+void toUppercase(char *str) { // Function to convert a string to uppercase
+    int i = 0;
+    while (str[i] != '\0') {
+        str[i] = toupper(str[i]);
+        i++;
     }
-    
-    int usedConsonantIndices[5] = {-1, -1, -1, -1, -1};
-    
-    for (int i = 0; i < 5; i++) {
-        int uniqueConsonantFound = 0;
-        
-        while (uniqueConsonantFound == 0) {
-            int consonantIndex = rand() % consonantCount;
-            
-            int isDuplicate = 0;
-            for (int j = 0; j < i; j++) {
-                if (consonantIndex == usedConsonantIndices[j]) {
-                    isDuplicate = 1;
-                }
-            }
-            
-            if (isDuplicate == 0) {
-                letters[letterIndex] = consonants[consonantIndex];
-                usedConsonantIndices[i] = consonantIndex;
-                letterIndex++;
-                uniqueConsonantFound = 1;
-            }
-        }
-    }
-    
-    letters[7] = '\0';
-    
-    printf("Letters: ");
-    for (int i = 0; i < 7; i++) {
-        printf("%c ", letters[i]);
-    }
-    printf("\n");
 }
 
-char **openDict(const char *fileName, int *wordCount) {
+void letterPicker(char *ptrLetters) {// Function to pick letters for the game
+    srand(time(NULL));
+    
+    char vowels[] = "AEIOU"; 
+    int vowelsize = sizeof(vowels) - 1;
+    
+    char consonants[] = "BCDFGHKLMNPRST";
+    int consonantSize = sizeof(consonants) - 1;
+    
+    int letterIndex = 0;
+    
+    int FirstVowel = 0;
+    while (FirstVowel == 0) {// Loop to pick the first vowel
+        int vowelIndex = rand() % vowelsize;
+        ptrLetters[letterIndex] = vowels[vowelIndex];
+        letterIndex++;
+        FirstVowel = 1;
+    }
+    
+    
+    int SecondVowel = 0;
+    while (SecondVowel == 0) {// Loop to pick the second vowel
+        int vowelIndex = rand() % vowelsize; // Randomly pick a vowel
+        
+        
+        int Duplicate = 0;
+        for (int i = 0; i < letterIndex; i++) { // Check for duplicates
+            if (ptrLetters[i] == vowels[vowelIndex]) { 
+                Duplicate = 1;
+            }
+        }
+        
+        if (Duplicate == 0) { // If no duplicates, add the vowel
+            ptrLetters[letterIndex] = vowels[vowelIndex];
+            letterIndex++;
+            SecondVowel = 1;
+        }
+    }
+    
+    while (letterIndex < 7) { // Loop to pick the remaining letters
+        int consonantIndex = rand() % consonantSize;
+         
+        int Duplicate = 0;
+        for (int i = 0; i < letterIndex; i++) { // Check for duplicates
+            if (ptrLetters[i] == consonants[consonantIndex]) {
+                Duplicate = 1;
+            }
+        }
+        
+        if (Duplicate == 0) { // If no duplicates, add the consonant
+            ptrLetters[letterIndex] = consonants[consonantIndex];
+            letterIndex++;
+        }
+    }
+        
+    ptrLetters[7] = '\0';
+}
+
+char **openDict(const char *fileName, int *wordCount) { // Function to open the dictionary file
     FILE *ptrFile = fopen(fileName, "r");
     if (!ptrFile) {
         printf("Dictionary file not found\n");
         return NULL;
     }
+
     printf("Reading dictionary");
-    int maxSize = 100;
-    char **dict = malloc(maxSize * sizeof(char *));
+    
+    int maxSize = INIT_SIZE;
+    char **ptrDict = malloc(maxSize * sizeof(char *)); // Allocate memory for the dictionary
+    if (ptrDict == NULL) {
+        printf("Call to malloc() unsuccessful.\n");
+        return NULL;
+    }
+
     *wordCount = 0;
     char word[MAX_WORD_LENGTH];
-    int indx = 0;
-    char ch;
-    while (fread(&ch, 1, 1, ptrFile) == 1) {
-        if (isalpha(ch)) {
-            if (indx < MAX_WORD_LENGTH - 1)
-                word[indx++] = ch;
-        } else {
-            if (indx > 0) {
-                word[indx] = '\0';
-                if (*wordCount >= maxSize) {
-                    maxSize *= 2;
-                    dict = realloc(dict, maxSize * sizeof(char *));
-                }
-                dict[*wordCount] = malloc(strlen(word) + 1);
-                if (dict[*wordCount])
-                    strcpy(dict[*wordCount], word);
-                (*wordCount)++;
-                if ((*wordCount) % 5000 == 0)
-                    printf(".");
-                indx = 0;
+    int index = 0;
+    char c;
+
+    while (fread(&c, 1, 1, ptrFile) == 1) { // Read the file character by character
+        if (isalpha(c)) { // Check if the character is a letter
+            if (index < MAX_WORD_LENGTH - 1)
+                word[index++] = c;
+        } else if (index > 0) {// If a word is formed, store it
+            word[index] = '\0';
+            if (*wordCount >= maxSize) {// Check if the dictionary is full
+                maxSize += 1;;
+                ptrDict = realloc(ptrDict, maxSize * sizeof(char *));
             }
+            ptrDict[*wordCount] = malloc(strlen(word) + 1);// Allocate memory for the word
+            if (ptrDict[*wordCount] == NULL) {
+                printf("Call to malloc() unsuccessful.\n");
+                return NULL;
+            }
+            if (ptrDict[*wordCount]) // Copy the word to the dictionary
+                strcpy(ptrDict[*wordCount], word);
+            (*wordCount)++;
+            if ((*wordCount) % DICT_BLOCK_SIZE == 0)// Print progress
+                printf(".");
+            index = 0;
         }
     }
-    if (indx > 0) {
-        word[indx] = '\0';
-        if (*wordCount >= maxSize) {
-            maxSize *= 2;
-            dict = realloc(dict, maxSize * sizeof(char *));
-        }
-        dict[*wordCount] = malloc(strlen(word) + 1);
-        if (dict[*wordCount])
-            strcpy(dict[*wordCount], word);
-        (*wordCount)++;
-        if ((*wordCount) % 5000 == 0)
-            printf(".");
-    }
-    printf("\nNumber of Words: %d\n", *wordCount);
+    printf("\n");
     fclose(ptrFile);
-    return dict;
+
+    return ptrDict;
 }
 
-void printlayout(char *letters) {
-    printf("      %c\n", toupper(letters[0]));
-    printf("   %c     %c\n", toupper(letters[1]), toupper(letters[2]));
-    printf("  %c       %c\n", toupper(letters[3]), toupper(letters[4]));
-    printf("    %c   %c\n", toupper(letters[5]), toupper(letters[6]));
+void printlayout(char *ptrLetters) {// Function to print the layout of the letters
+    printf("      %c\n", toupper(ptrLetters[0]));
+    printf("   %c     %c\n", toupper(ptrLetters[1]), toupper(ptrLetters[2]));
+    printf("  %c       %c\n", toupper(ptrLetters[3]), toupper(ptrLetters[4]));
+    printf("    %c   %c\n", toupper(ptrLetters[5]), toupper(ptrLetters[6]));
 }
 
-char **findValidWords(char **dictionary, int wordCount, char *letters, int *foundCount) {
+char **findValidWords(char **dictionary, int wordCount, char *ptrLetters, int *foundCount) { // Function to find valid words
     char upperLetters[8];
-    for (int i = 0; i < 7; i++) {
-        upperLetters[i] = toupper(letters[i]);
+    for (int i = 0; i < 7; i++) {// Convert letters to uppercase
+        upperLetters[i] = toupper(ptrLetters[i]);
     }
     upperLetters[7] = '\0';
-    int letterFreq[26] = {0};
-    for (int i = 0; i < 7; i++) {
-        letterFreq[upperLetters[i] - 'A']++;
-    }
+    
     int max = 10;
-    char **result = malloc(max * sizeof(char *));
+    char **ptrResult = malloc(max * sizeof(char *));// Allocate memory for the valid words
+    if (ptrResult == NULL) {
+        printf("Call to malloc() unsuccessful.\n");
+        return NULL;
+    }
+
     *foundCount = 0;
-    for (int i = 0; i < wordCount; i++) {
-        char temp[MAX_WORD_LENGTH];
-        strncpy(temp, dictionary[i], MAX_WORD_LENGTH - 1);
-        temp[MAX_WORD_LENGTH - 1] = '\0';
-        toupper(temp);
-        int len = strlen(temp);
-        if (len >= 3 && len <= 7) {
-            int tempFreq[26];
-            memcpy(tempFreq, letterFreq, sizeof(tempFreq));
+    
+    for (int i = 0; i < wordCount; i++) {// Loop through the dictionary
+        char wordBuffer[MAX_WORD_LENGTH];
+        strncpy(wordBuffer, dictionary[i], MAX_WORD_LENGTH - 1);// Copy the word to the buffer
+        wordBuffer[MAX_WORD_LENGTH - 1] = '\0';
+        
+        toUppercase(wordBuffer);// Convert the word to uppercase
+        
+        int len = strlen(wordBuffer);
+        if (len >= 3 && len <= 7) {// Check if the word is valid
             int valid = 1;
-            int j = 0;
-            for (; j < len && valid; j++) {
-                int idx = temp[j] - 'A';
-                tempFreq[idx]--;
-                if (tempFreq[idx] < 0) {
+            for (char c = 'A'; c <= 'Z'; c++) {
+                int wordOccurrence = 0;
+                for (int j = 0; j < len; j++) {
+                    if (wordBuffer[j] == c) {
+                        wordOccurrence++;
+                    }
+                }
+                
+                int letterOccurrence = 0;
+                for (int j = 0; j < 7; j++) {
+                    if (upperLetters[j] == c) {
+                        letterOccurrence++;
+                    }
+                }
+                if (wordOccurrence > letterOccurrence) {
                     valid = 0;
                 }
             }
-            if (valid) {
-                if (*foundCount >= max) {
-                    max *= 2;
-                    result = realloc(result, max * sizeof(char *));
+            if (valid == 1) {
+                if (*foundCount >= max) {// Check if the result array is full
+                    max += 1;
+                    ptrResult = realloc(ptrResult, max * sizeof(char *));// Allocate more memory for the result array
                 }
-                result[*foundCount] = malloc((len + 1) * sizeof(char));
-                strcpy(result[*foundCount], temp);
+                ptrResult[*foundCount] = malloc((len + 1) * sizeof(char));// Allocate memory for the word
+                if (ptrResult[*foundCount] == NULL) {
+                    printf("Call to malloc() unsuccessful.\n");
+                    return NULL;
+                }
+                strcpy(ptrResult[*foundCount], wordBuffer);// Copy the word to the result array
                 (*foundCount)++;
             }
         }
     }
-    return result;
+    return ptrResult;// Return the result array
 }
 
-void printBoard(char ***wordLists, int *wordListSizes, int **guessed) {
+void printBoard(char ***ptrWordLists, int *ptrWordListSizes, int **ptrGuessed) {// Function to print the board
     int totalWords = 0;
-    for (int i = 0; i < MAX_GROUP; i++) {
-        totalWords += wordListSizes[i];
+    for (int i = 0; i < MAX_GROUP; i++) {// Loop through the word lists
+        totalWords += ptrWordListSizes[i];
     }
     int columns = 4;
     int rows = (totalWords + columns - 1) / columns;
-    for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < columns; c++) {
-            int idx = c * rows + r;
-            if (idx < totalWords) {
-                int group = 0;
-                int pos = idx;
-                while (group < MAX_GROUP && pos >= wordListSizes[group]) {
-                    pos = pos - wordListSizes[group];
-                    group = group + 1;
-                }
-                if (group < MAX_GROUP) {
-                    if (guessed[group][pos]) {
-                        printf("%s    ", wordLists[group][pos]);
-                    } else {
-                        int len = strlen(wordLists[group][pos]);
-                        printf("%c", wordLists[group][pos][0]);
-                        for (int k = 1; k < len; k++) {
-                            printf("-");
-                        }
-                        printf("    ");
+    
+    for (int r = 0; r < rows; r++) {// Loop through the rows
+        for (int c = 0; c < columns; c++) {// Loop through the columns
+            int wordCounter = 0;
+            int targetGroup = -1;
+            int targetPos = -1;
+            
+            for (int g = 0; g < MAX_GROUP; g++) {// Loop through the groups
+                for (int p = 0; p < ptrWordListSizes[g]; p++) {// Loop through the positions
+                    if (wordCounter == c * rows + r) {// Check if the word is in the current position
+                        targetGroup = g;
+                        targetPos = p;
                     }
+                    wordCounter++;
+                }
+            }
+            
+            if (targetGroup >= 0 && targetPos >= 0) {// Check if the word is valid
+                if (ptrGuessed[targetGroup][targetPos]) {
+                    printf("%s    ", ptrWordLists[targetGroup][targetPos]);
+                } else {// If the word is not guessed, print the first letter and dashes
+                    int len = strlen(ptrWordLists[targetGroup][targetPos]);
+                    printf("%c", ptrWordLists[targetGroup][targetPos][0]);
+                    for (int k = 1; k < len; k++) {// Print dashes for the remaining letters
+                        printf("-");
+                    }
+                    printf("    ");
                 }
             }
         }
@@ -213,146 +248,217 @@ void printBoard(char ***wordLists, int *wordListSizes, int **guessed) {
     }
 }
 
-void buildList(char **validWords, int validCount,
-                          char ****wordListsPtr, int **wordListSizesPtr, int ***guessedPtr, int *totalValid) {
-    char ***wordLists = malloc(MAX_GROUP * sizeof(char **));
-    int *wordListSizes = malloc(MAX_GROUP * sizeof(int));
-    int *wordListCaps = malloc(MAX_GROUP * sizeof(int));
-    int **guessed = malloc(MAX_GROUP * sizeof(int *));
-    for (int i = 0; i < MAX_GROUP; i++) {
-        wordListSizes[i] = 0;
-        wordListCaps[i] = 10;
-        wordLists[i] = malloc(wordListCaps[i] * sizeof(char *));
-        guessed[i] = calloc(wordListCaps[i], sizeof(int));
+void buildList(char **validWords, int validCount,char ***ptrWordLists, int *ptrWordListSizes, int **ptrGuessed, int *ptrTotalValid) {// Function to build the word lists
+    printf("Creating word lists");
+    int *ptrMaxGroup = malloc(MAX_GROUP * sizeof(int));// Allocate memory for the maximum group sizes
+    if (ptrMaxGroup == NULL) {//
+        printf("Call to malloc() unsuccessful.\n");
+        return; //since void not returning anything
     }
-    *totalValid = 0;
-    for (int i = 0; i < validCount; i++) {
-        int len = strlen(validWords[i]);
-        if (len >= 3 && len <= 3 + MAX_GROUP - 1) {
-            int group = len - 3;
-            if (wordListSizes[group] >= wordListCaps[group]) {
-                wordListCaps[group] = wordListCaps[group] * 2;
-                wordLists[group] = realloc(wordLists[group], wordListCaps[group] * sizeof(char *));
-                guessed[group] = realloc(guessed[group], wordListCaps[group] * sizeof(int));
-            }
-            wordLists[group][wordListSizes[group]] = malloc((len + 1) * sizeof(char));
-            strcpy(wordLists[group][wordListSizes[group]], validWords[i]);
-            guessed[group][wordListSizes[group]] = 0;
-            wordListSizes[group] = wordListSizes[group] + 1;
-            *totalValid = *totalValid + 1;
+    
+    for (int i = 0; i < MAX_GROUP; i++) {// Loop through the groups
+        ptrWordListSizes[i] = 0;
+        ptrMaxGroup[i] = 10;
+        ptrWordLists[i] = malloc(ptrMaxGroup[i] * sizeof(char *));// Allocate memory for the word lists
+        ptrGuessed[i] = calloc(ptrMaxGroup[i], sizeof(int));// Allocate memory for the guessed array
+        if (ptrWordLists[i] == NULL || ptrGuessed[i] == NULL) {
+            printf("Call to malloc() unsuccessful.\n");
+            return; //since void not returning anything
         }
     }
-    *wordListsPtr = wordLists;
-    *wordListSizesPtr = wordListSizes;
-    *guessedPtr = guessed;
-    free(wordListCaps);
+
+    *ptrTotalValid = 0;
+    int progressCounter = 0;
+    int progress = validCount / 20;// Calculate progress
+    if (progress < 1) {// round progress up
+        progress = 1;
+    }
+
+    for (int i = 0; i < validCount; i++) {// Loop through the valid words
+        int len = strlen(validWords[i]);
+        if (len >= MIN_WORD_LENGTH && len <= MIN_WORD_LENGTH + MAX_GROUP - 1) {// Check if the word is valid
+            int group = len - MIN_WORD_LENGTH;
+            if (ptrWordListSizes[group] >= ptrMaxGroup[group]) {// Check if the group is full
+                ptrMaxGroup[group]++;// Increase the size of the group
+                ptrWordLists[group] = realloc(ptrWordLists[group], ptrMaxGroup[group] * sizeof(char *));// Reallocate memory
+                ptrGuessed[group] = realloc(ptrGuessed[group], ptrMaxGroup[group] * sizeof(int));// Reallocate memory
+            }
+            ptrWordLists[group][ptrWordListSizes[group]] = malloc((len + 1) * sizeof(char));// Allocate memory for the word
+            if (ptrWordLists[group][ptrWordListSizes[group]] == NULL) {
+                printf("Call to malloc() unsuccessful.\n");
+                return;
+            }
+            strcpy(ptrWordLists[group][ptrWordListSizes[group]], validWords[i]);// Copy the word to the group
+            ptrGuessed[group][ptrWordListSizes[group]] = 0;// Initialize the guessed array
+            ptrWordListSizes[group]++;
+            (*ptrTotalValid)++;// Increase the total valid words count
+        }
+        progressCounter++;
+        if (progressCounter >= progress) {// Print progress
+            printf(".");
+            progressCounter = 0;
+        }
+    }
+    
+    printf("\n");
+    free(ptrMaxGroup);// Free the memory
 }
 
-int markGuessed(char ***wordLists, int *wordListSizes, int **guessed, char *guess) {
+int markGuessed(char ***ptrWordLists, int *ptrWordListSizes, int **ptrGuessed, char *guess) {// Function to mark a word as guessed
     int found = 0;
-    for (int group = 0; group < MAX_GROUP; group++) {
-        for (int j = 0; j < wordListSizes[group]; j++) {
-            if (strcmp(wordLists[group][j], guess) == 0) {
-                if (!guessed[group][j]) {
-                    guessed[group][j] = 1;
+
+    for (int group = 0; group < MAX_GROUP; group++) {// Loop through the groups
+        for (int j = 0; j < ptrWordListSizes[group]; j++) {// Loop through the positions
+            if (strcmp(ptrWordLists[group][j], guess) == 0) {
+                if (!ptrGuessed[group][j]) {// Check if the word is already guessed
+                    ptrGuessed[group][j] = 1;
                     found = 1;
                 }
             }
         }
     }
+
     return found;
 }
 
-int guessedWord(int *wordListSizes, int **guessed) {
+int guessedWord(int *ptrWordListSizes, int **ptrGuessed) {// Function to check if all words are guessed
     int complete = 1;
-    for (int group = 0; group < MAX_GROUP; group++) {
-        for (int j = 0; j < wordListSizes[group]; j++) {
-            if (!guessed[group][j])
+
+    for (int group = 0; group < MAX_GROUP; group++) {// Loop through the groups
+        for (int j = 0; j < ptrWordListSizes[group]; j++) {// Loop through the positions
+            if (!ptrGuessed[group][j])// Check if the word is guessed
                 complete = 0;
         }
     }
-    return complete;
+    
+    return complete;// Return 1 if all words are guessed, 0 otherwise
 }
 
-void gamePlay(char ***wordLists, int *wordListSizes, int **guessed, char *letters) {
+int gamePlay(char ***ptrWordLists, int *ptrWordListSizes, int **ptrGuessed, char *ptrLetters) {// Function to play the game
     char input[MAX_WORD_LENGTH];
     int running = 1;
-    while (running == 1) {
+    int quit = 0;
+    
+    while (running == 1) {// Loop until the game is over
         printf("\nEnter a word or 'Q' to quit: ");
-        scanf("%s", input);
-        toUppercase(input);
-        if (strcmp(input, "Q") == 0) {
-            running = 0;
-        } else {
-            if (markGuessed(wordLists, wordListSizes, guessed, input)) {
-                printf("Good guess!\n");
-            } else {
-                printf("X X X X X\n");
+        
+        if (fgets(input, MAX_WORD_LENGTH, stdin) != NULL) {// Read the input
+            int len = strlen(input);
+            if (len > 0 && input[len-1] == '\n') {// Check for newline character
+                input[len-1] = '\0';
+                len--;
             }
-        }
-        if (running == 1){
-            printlayout(letters);
-            printf("\nWord Board:\n");
-            printBoard(wordLists, wordListSizes, guessed);
-            if (guessedWord(wordListSizes, guessed)) {
-                printf("Congratulations, you've guessed all words!\n");
-                running = 0;
+            
+            char shortInput[MAX_WORD_LENGTH];
+            int index2 = 0;// Index for shortInput
+            int nonSpace = 0;//variable that stores check for non-space characters
+            
+            for (int i = 0; i < len; i++) {// Loop through the input
+                if (!isspace(input[i])) {// Check for spaces
+                    shortInput[index2++] = input[i];
+                    nonSpace = 1;
+                }
+            }
+            shortInput[index2] = '\0';// Null-terminate the string
+            
+            if (nonSpace) {// Check if there are non-space characters
+                toUppercase(shortInput);
+                
+                if (strcmp(shortInput, "Q") == 0) {// Check for quit command
+                    running = 0;
+                    quit = 1;
+                } else if (markGuessed(ptrWordLists, ptrWordListSizes, ptrGuessed, shortInput)) {// Check if the word is guessed
+                        printf("Good guess!\n");
+                } else { // prints "X" for each letter in the word
+                    int xCount = strlen(shortInput);
+                    if (xCount < 3){
+                        xCount = 3;
+                    }
+                    if (xCount > 7) {
+                        xCount = 7;
+                    }
+                    
+                    for (int i = 0; i < xCount; i++) {
+                        printf("X ");
+                    }
+                    printf("\n");
+                }
+                
+                if (running == 1){// Check if the game is still running
+                    printlayout(ptrLetters);// Print the layout of the letters
+                    printBoard(ptrWordLists, ptrWordListSizes, ptrGuessed);// Print the board
+                    if (guessedWord(ptrWordListSizes, ptrGuessed)) {// Check if all words are guessed
+                        printf("Congratulations, you've guessed all words!\n");
+                        running = 0;// End the game / prints new board with different letters later in the code
+                    }
+                }
             }
         }
     }
+    
+    return quit;// Return 1 if the game is quit, 0 otherwise
 }
 
-int main(int argc, char *ptrargv[]) {
+int main(int argc, char *ptrargv[]) {// Main function
     if (argc != 2) {
         printf("Not enough arguments.\nCommand should be: ./p5 dictionary\n");
         return 1;
     }
 
-    char *letters = malloc(8 * sizeof(char));
-    if (!letters) {
-        printf("Memory allocation failed for letters.\n");
-        return 1;
-    }
-
     int wordCount = 0;
-    char **dictionary = openDict(ptrargv[1], &wordCount);
-    if (dictionary == NULL) {
-        free(letters);
-        return 1;
+    char **dictionary = openDict(ptrargv[1], &wordCount);// Open the dictionary file
+
+    int running = 1;
+    while (running == 1) {// Loop until the game is over
+        char *ptrLetters = malloc(8 * sizeof(char));// Allocate memory for the letters
+        if (ptrLetters == NULL) {
+            printf("Call to malloc() unsuccessful.\n");
+            return 1;
+        }
+
+        letterPicker(ptrLetters);// Pick letters for the game
+        printlayout(ptrLetters);// Print the layout of the letters
+
+        int validCount = 0;
+        char **validWords = findValidWords(dictionary, wordCount, ptrLetters, &validCount);// Find valid words
+        int ptrTotalValid = 0;
+
+        char ***ptrWordLists = malloc(MAX_GROUP * sizeof(char **));// Allocate memory for the word lists
+        int *ptrWordListSizes = malloc(MAX_GROUP * sizeof(int));// Allocate memory for the word list sizes
+        int **ptrGuessed = malloc(MAX_GROUP * sizeof(int *));// Allocate memory for the guessed array
+        if (ptrWordLists == NULL || ptrWordListSizes == NULL || ptrGuessed == NULL) {
+            printf("Call to malloc() unsuccessful.\n");
+            return 1;
+        }
+        buildList(validWords, validCount, ptrWordLists, ptrWordListSizes, ptrGuessed, &ptrTotalValid);// Build the word lists
+        printBoard(ptrWordLists, ptrWordListSizes, ptrGuessed);// Print the board
+        
+        int quitGame = gamePlay(ptrWordLists, ptrWordListSizes, ptrGuessed, ptrLetters);// Play the game
+        if (quitGame == 1) {
+            running = 0;
+        }
+        
+        for (int i = 0; i < validCount; i++) {
+            free(validWords[i]);// Free the valid words
+        }
+        free(validWords);// Free the valid words array
+        for (int group = 0; group < MAX_GROUP; group++) {// Loop through the groups
+            for (int j = 0; j < ptrWordListSizes[group]; j++) {// Loop through the positions
+                free(ptrWordLists[group][j]);// Free the words
+            }
+            free(ptrWordLists[group]);// Free the word lists words
+            free(ptrGuessed[group]);// Free the guessed words
+        }
+        free(ptrWordLists);// Free the word lists
+        free(ptrGuessed);// Free the guessed array
+        free(ptrWordListSizes);// Free the word list sizes
+        free(ptrLetters);// Free the letters
     }
 
-    letterPicker(letters);
-    printlayout(letters);
-
-    int validCount = 0;
-    char **validWords = findValidWords(dictionary, wordCount, letters, &validCount);
-    char ***wordLists;
-    int *wordListSizes;
-    int **guessed;
-    int totalValid = 0;
-
-    buildList(validWords, validCount, &wordLists, &wordListSizes, &guessed, &totalValid);
-    printf("\nWord Board:\n");
-    printBoard(wordLists, wordListSizes, guessed);
-    gamePlay(wordLists, wordListSizes, guessed, letters);
-    for (int i = 0; i < wordCount; i++) {
+    for (int i = 0; i < wordCount; i++) {// Loop through the dictionary to free the words
         free(dictionary[i]);
     }
-    free(dictionary);
-    for (int i = 0; i < validCount; i++) {
-        free(validWords[i]);
-    }
-    free(validWords);
-    for (int group = 0; group < MAX_GROUP; group++) {
-        for (int j = 0; j < wordListSizes[group]; j++) {
-            free(wordLists[group][j]);
-        }
-        free(wordLists[group]);
-        free(guessed[group]);
-    }
-    free(wordLists);
-    free(guessed);
-    free(wordListSizes);
-    free(letters);
+    free(dictionary);// Free the dictionary array(pointer to the dictionary)
+
     return 0;
 }
