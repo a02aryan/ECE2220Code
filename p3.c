@@ -110,8 +110,8 @@ void encode(char line[]) { // encodes two chars into a 21-bit Hamming code
         int parityPos = parity_positions[i];
         int bitSum = 0;
         for(bPosition = 1; bPosition <= 21; bPosition++) {//sum bits
-            if(bPosition != parityPos) {
-                if(bPosition & parityPos) {
+            if(bPosition != parityPos) {//skip parity bit
+                if(bPosition & parityPos) {//check if bit is set
                     int currentBit = (codeword >> (bPosition - 1)) & 1;//get bit
                     bitSum += currentBit;
                 }
@@ -135,16 +135,17 @@ void encode(char line[]) { // encodes two chars into a 21-bit Hamming code
 }
 
 void decode(char line[]) { // decodes a 6-digit hex codeword back into two chars
-    char input[10], hexStr[10], extra[10];
+    const int SIZE = 10;
+    char input[SIZE], hexStr[SIZE], extra[SIZE];
     unsigned int codeword, binNum;
     int i, bPosition, BitIndex, bit;
     int valid;
 
-    if(sscanf(line, "%9s %9s %9s", input, hexStr, extra) != 2) {
+    if(sscanf(line, "%9s %9s %9s", input, hexStr, extra) != 2) {//get input
         printf("Invalid decode input. Format: decode <6_hex_digits>\n"); // check input
         return;
     }
-    if(strlen(hexStr) != 6) {
+    if(strlen(hexStr) != 6) {//check length
         printf("Invalid decode input. The hex codeword must be exactly 6 characters.\n"); // check length
         return;
     }
@@ -169,7 +170,7 @@ void decode(char line[]) { // decodes a 6-digit hex codeword back into two chars
     }
     printf("\n");
 
-    printCode24(codeword);
+    printCode24(codeword);//prints codeword
     printCarets();
 
     binNum = 0;
@@ -205,6 +206,8 @@ void decode(char line[]) { // decodes a 6-digit hex codeword back into two chars
 int main(void) { // main loop
     char buf[100], input[10];
     int running = 0, len;
+
+    printf("This code Encode/Decode using a 21-bit Hamming Code\n\n");
 
     while(running != 1) {
         printf("Enter one of these options: encode <char1> <char2> or decode <6_hex_digits> or exit\n");//prompt

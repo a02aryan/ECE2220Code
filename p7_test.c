@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define MAX_TERMINALS 100
+#define MAX_TERMINALS 20
 #define NUM_PLANTS 3
 
 typedef void (*fptr)();
@@ -175,7 +175,7 @@ int main() {
     char path[32];
     
     for (int i = 0; i < MAX_TERMINALS; i++) {
-        sprintf(path, "/dev/pts/%d", i);
+        sprintf(path, "/dev/pts/%03d", i);
         term = fopen(path, "w");
         
         if (term != NULL) {
